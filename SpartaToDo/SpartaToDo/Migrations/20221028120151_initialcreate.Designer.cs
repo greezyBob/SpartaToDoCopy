@@ -9,17 +9,17 @@ using SpartaToDo.Data;
 
 #nullable disable
 
-namespace SpartaToDo.Data.Migrations
+namespace SpartaToDo.Migrations
 {
     [DbContext(typeof(SpartaToDoContext))]
-    [Migration("20221028094519_secondattempt")]
-    partial class secondattempt
+    [Migration("20221028120151_initialcreate")]
+    partial class initialcreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.6")
+                .HasAnnotation("ProductVersion", "6.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
@@ -237,7 +237,7 @@ namespace SpartaToDo.Data.Migrations
                     b.Property<bool>("Complete")
                         .HasColumnType("bit");
 
-                    b.Property<DateTime>("Date")
+                    b.Property<DateTime>("DateCreated")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")

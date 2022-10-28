@@ -8,46 +8,57 @@ using Microsoft.EntityFrameworkCore;
 using SpartaToDo.Data;
 using SpartaToDo.Models;
 using SpartaToDo.Models.ViewModels;
+using SpartaToDo.Services;
 
 namespace SpartaToDo.Controllers
 {
     public class ToDoController : Controller
     {
-        private readonly SpartaToDoContext _context;
-
-        public ToDoController(SpartaToDoContext context)
+        private readonly ILogger<ToDoController> _logger;
+        private readonly IToDoService _service;
+        public ToDoController(IToDoService service,ILogger<ToDoController> logger)
         {
-            _context = context;
+            _logger = logger;
+            _service = service;
         }
 
         // GET: ToDo
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString)
         {
-            var toDos = await _context.ToDos.ToListAsync();
-            var toDosViewModels = new List<ToDoViewModel>();
-            foreach (var item in toDos)
+            var toDos = await _service.GetToDoItems();
+            var toDosViewModelList = new List<ToDoViewModel>();
+            foreach (var toDo in toDos)
             {
-                toDosViewModels.Add(Utils.ToDoToToViewModel(item));
+                toDosViewModelList.Add(Utils.ToDoModelToToDoViewModel(toDo));
+
+                if (!String.IsNullOrEmpty(searchString))
+                {
+                    toDosViewModelList = toDosViewModelList.Where(t => t.Title.ToLower().Contains(searchString.ToLower()) ||
+                    t.Description.ToLower().Contains(searchString.ToLower())).ToList();
+                }
+
             }
-              return View(toDosViewModels);
+            return View(toDosViewModelList);
         }
+
+
 
         // GET: ToDo/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null || _context.ToDos == null)
+            if (id == null)
             {
                 return NotFound();
             }
 
-            var toDo = await _context.ToDos
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var toDo = await _service.GetToDoItemByIdAsync(id);
+
             if (toDo == null)
             {
                 return NotFound();
             }
-
-            return View(toDo);
+            var toDoViewModel = Utils.ToDoModelToToDoViewModel(toDo);
+            return View(toDoViewModel);
         }
 
         // GET: ToDo/Create
@@ -61,52 +72,60 @@ namespace SpartaToDo.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Title,Description,Complete,Date")] ToDo toDo)
+        //Removed "Id" from the Bind attribute parameter (will be created automatically for us)
+        public async Task<IActionResult> Create([Bind("Title,Description,Complete")] ToDoViewModel toDoViewModel)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(toDo);
-                await _context.SaveChangesAsync();
+                var toDo = new ToDo
+                {
+                    Title = toDoViewModel.Title,
+                    Description = toDoViewModel.Description,
+                    Complete = toDoViewModel.Complete
+                };
+
+                await _service.CreateToDoItemAsync(toDo);
                 return RedirectToAction(nameof(Index));
             }
-            return View(toDo);
+            return View(toDoViewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateCheckBox(int? id, [Bind("Complete")] ToDoViewModel toDoViewModel)
+        {
+            var toDo = await _service.GetToDoItemByIdAsync(id);
+            if (toDo == null) return NotFound();
+            toDo.Complete = toDoViewModel.Complete;
+            await _service.SaveChanges();
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: ToDo/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null || _context.ToDos == null)
-            {
-                return NotFound();
-            }
-
-            var toDo = await _context.ToDos.FindAsync(id);
-            if (toDo == null)
-            {
-                return NotFound();
-            }
-            return View(toDo);
-        }
-
         // POST: ToDo/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,Complete,Date")] ToDo toDo)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,Complete,DateCreated")]ToDoViewModel toDoViewModel)
         {
-            if (id != toDo.Id)
+            var toDo = await _service.GetToDoItemByIdAsync(id);
+
+            if (id != toDo.Id || toDo == null)
             {
                 return NotFound();
             }
-
+            var x = ModelState.IsValid;
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(toDo);
-                    await _context.SaveChangesAsync();
+                    toDo.Title = toDoViewModel.Title;
+                    toDo.Description = toDoViewModel.Description;
+                    toDo.Complete = toDoViewModel.Complete;
+                    await _service.SaveChanges();
                 }
+
                 catch (DbUpdateConcurrencyException)
                 {
                     if (!ToDoExists(toDo.Id))
@@ -118,42 +137,44 @@ namespace SpartaToDo.Controllers
                         throw;
                     }
                 }
+
                 return RedirectToAction(nameof(Index));
             }
-            return View(toDo);
+            return View(toDoViewModel);
         }
 
+        // GET: ToDo/Edit/5
+
+
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var toDo = await _service.GetToDoItemByIdAsync(id);
+            if (toDo == null)
+            {
+                return NotFound();
+            }
+            return View(Utils.ToDoModelToToDoViewModel(toDo));
+        }
+
+
         // GET: ToDo/Delete/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int? id)
         {
-            var toDo = await _context.ToDos.FindAsync(id);
-            _context.ToDos.Remove(toDo);
-            await _context.SaveChangesAsync();
+            var toDo = await _service.GetToDoItemByIdAsync(id);
+            await _service.RemoveToDoItemAsync(toDo);
             return RedirectToAction(nameof(Index));
         }
 
-        //// POST: ToDo/Delete/5
-        //[HttpPost, ActionName("Delete")]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> DeleteConfirmed(int id)
-        //{
-        //    if (_context.ToDos == null)
-        //    {
-        //        return Problem("Entity set 'SpartaToDoContext.ToDos'  is null.");
-        //    }
-        //    var toDo = await _context.ToDos.FindAsync(id);
-        //    if (toDo != null)
-        //    {
-        //        _context.ToDos.Remove(toDo);
-        //    }
-            
-        //    await _context.SaveChangesAsync();
-        //    return RedirectToAction(nameof(Index));
-        //}
-
         private bool ToDoExists(int id)
         {
-          return _context.ToDos.Any(e => e.Id == id);
+          return _service.ToDoItemExists(id);
         }
     }
 }

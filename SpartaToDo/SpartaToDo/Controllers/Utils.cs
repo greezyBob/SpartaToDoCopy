@@ -1,11 +1,11 @@
-﻿using SpartaToDo.Models;
-using SpartaToDo.Models.ViewModels;
+﻿using SpartaToDo.Models.ViewModels;
+using SpartaToDo.Models;
 
 namespace SpartaToDo.Controllers
 {
     public static class Utils
     {
-        public static ToDoViewModel ToDoToToViewModel(ToDo todo) =>
+        public static ToDoViewModel ToDoModelToToDoViewModel(ToDo todo) =>
             new ToDoViewModel
             {
                 Id = todo.Id,

@@ -9,7 +9,13 @@ namespace SpartaToDo.Data
         public SpartaToDoContext(DbContextOptions<SpartaToDoContext> options)
             : base(options)
         {
+
         }
+        public SpartaToDoContext()
+        {
+                
+        }
+
         public DbSet<ToDo> ToDos { get; set; }
     }
 }
