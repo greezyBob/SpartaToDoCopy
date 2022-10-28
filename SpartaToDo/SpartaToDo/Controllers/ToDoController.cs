@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SpartaToDo.Data;
 using SpartaToDo.Models;
+using SpartaToDo.Models.ViewModels;
 
 namespace SpartaToDo.Controllers
 {
@@ -22,7 +23,13 @@ namespace SpartaToDo.Controllers
         // GET: ToDo
         public async Task<IActionResult> Index()
         {
-              return View(await _context.ToDos.ToListAsync());
+            var toDos = await _context.ToDos.ToListAsync();
+            var toDosViewModels = new List<ToDoViewModel>();
+            foreach (var item in toDos)
+            {
+                toDosViewModels.Add(Utils.ToDoToToViewModel(item));
+            }
+              return View(toDosViewModels);
         }
 
         // GET: ToDo/Details/5
@@ -119,39 +126,30 @@ namespace SpartaToDo.Controllers
         // GET: ToDo/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null || _context.ToDos == null)
-            {
-                return NotFound();
-            }
-
-            var toDo = await _context.ToDos
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (toDo == null)
-            {
-                return NotFound();
-            }
-
-            return View(toDo);
-        }
-
-        // POST: ToDo/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            if (_context.ToDos == null)
-            {
-                return Problem("Entity set 'SpartaToDoContext.ToDos'  is null.");
-            }
             var toDo = await _context.ToDos.FindAsync(id);
-            if (toDo != null)
-            {
-                _context.ToDos.Remove(toDo);
-            }
-            
+            _context.ToDos.Remove(toDo);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
+
+        //// POST: ToDo/Delete/5
+        //[HttpPost, ActionName("Delete")]
+        //[ValidateAntiForgeryToken]
+        //public async Task<IActionResult> DeleteConfirmed(int id)
+        //{
+        //    if (_context.ToDos == null)
+        //    {
+        //        return Problem("Entity set 'SpartaToDoContext.ToDos'  is null.");
+        //    }
+        //    var toDo = await _context.ToDos.FindAsync(id);
+        //    if (toDo != null)
+        //    {
+        //        _context.ToDos.Remove(toDo);
+        //    }
+            
+        //    await _context.SaveChangesAsync();
+        //    return RedirectToAction(nameof(Index));
+        //}
 
         private bool ToDoExists(int id)
         {
